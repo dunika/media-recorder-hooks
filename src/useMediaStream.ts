@@ -2,7 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
-} from 'npm:react'
+} from 'react'
 import MediaStreamManager from './MediaStreamManager.ts'
 import { FetchStatus } from './types.ts'
 

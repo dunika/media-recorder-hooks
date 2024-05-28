@@ -1,7 +1,7 @@
 import {
   useEffect,
   useState,
-} from 'npm:react'
+} from 'react'
 import { fetchAvailableAudioDevices } from './mediaUtils.ts'
 
 export type UseAvailableAudioDevices = {

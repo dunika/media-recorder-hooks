@@ -2,7 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
-} from 'npm:react'
+} from 'react'
 import useEvent from './useEvent.ts'
 import type {
   MediaControls,

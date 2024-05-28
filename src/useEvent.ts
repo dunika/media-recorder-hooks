@@ -1,4 +1,4 @@
-import React from "npm:react";
+import React from "react";
 
 type AnyFunction = (...args: any[]) => any;
 

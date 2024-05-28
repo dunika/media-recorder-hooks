@@ -1,8 +1,8 @@
 import {
   useEffect,
   useRef,
-} from 'npm:react'
-import { useAudioPlayer } from 'npm:react-use-audio-player'
+} from 'react'
+import { useAudioPlayer } from 'react-use-audio-player'
 import useEvent from './useEvent.ts'
 import type {
   MediaControls,

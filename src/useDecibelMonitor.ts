@@ -1,7 +1,7 @@
 import {
   useEffect,
   useState,
-} from 'npm:react'
+} from 'react'
 import DecibelMonitor from './DecibelMonitor.ts'
 
 export type UseDecibelMonitorProps = {
