@@ -1,0 +1,9 @@
+{
+  "name": "@dunika/media-recorder-hooks",
+  "version": "0.1.0",
+  "exports": "./src/index.ts",
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+  }
+}
