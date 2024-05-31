@@ -3,30 +3,30 @@ import useMediaRecorder from './useMediaRecorder'
 import { AudioMediaFormat } from './types'
 
 type UseAudioRecorderProps = {
-  audioDeviceId?: string
+  deviceId?: string
   format?: AudioMediaFormat
   timeSlice?: number
   onFinished?: (_blob: Blob) => void
 }
 
 const useAudioRecorder = ({
-  audioDeviceId,
+  deviceId,
   format,
   timeSlice,
   onFinished,
 }: UseAudioRecorderProps = {}): ReturnType<typeof useMediaRecorder> => {
   const constraints = useMemo(() => {
-    if (!audioDeviceId) {
+    if (!deviceId) {
       return {
         audio: true,
       }
     }
     return {
       audio: {
-        deviceId: audioDeviceId,
+        deviceId,
       },
     }
-  }, [audioDeviceId])
+  }, [deviceId])
 
   return useMediaRecorder({
     constraints,

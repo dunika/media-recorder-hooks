@@ -3,18 +3,18 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from 'react'
 import useEvent from './useEvent'
-import { fetchDefaultMediaDevices } from './mesdiaUtils'
 
 type LoadAudioConfig = {
   src: string | null,
   onFinished?: () => void,
-  outputDeviceId?: string,
+  deviceId?: string,
 }
 
 type AudioPlaybackControls = {
-  play: () => void,
+  play: () => Promise<void>,
   pause: () => void,
   stop: () => void,
 }
@@ -28,6 +28,24 @@ type UseAudioPlayback = {
   load: (_props: LoadAudioConfig) => void,
 }
 
+const useMemoLoadAudioConfig = (loadAudioConfig?: LoadAudioConfig): LoadAudioConfig | undefined => {
+  const { src, onFinished, deviceId } = loadAudioConfig || {}
+  const wrappedOnFinished = useEvent(() => {
+    onFinished?.()
+  })
+
+  return useMemo(() => {
+    if (!src) {
+      return undefined
+    }
+    return ({
+      src,
+      onFinished: wrappedOnFinished,
+      deviceId,
+    })
+  }, [src, wrappedOnFinished, deviceId])
+}
+
 const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback => {
   const audio = useRef<HTMLAudioElement | null>(null)
   const cleanUp = useRef(() => {})
@@ -35,6 +53,8 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<Error | null>(null)
+
+  const loadAudioConfigMemo = useMemoLoadAudioConfig(loadAudioConfig)
 
   const reset = useCallback(() => {
     setIsPlaying(false)
@@ -51,7 +71,7 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
   }, [reset])
 
   const load = useEvent(async ({
-    outputDeviceId,
+    deviceId,
     onFinished,
     src,
   }: LoadAudioConfig) => {
@@ -65,15 +85,13 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
     const nextAudio = new Audio(src)
 
     try {
-      if (outputDeviceId) {
-        nextAudio.setSinkId(outputDeviceId)
-      } else {
-        const { audiooutput } = await fetchDefaultMediaDevices()
-        if (audiooutput) {
-          nextAudio.setSinkId(audiooutput.deviceId)
-        }
+      if (deviceId) {
+        nextAudio.setSinkId(deviceId)
       }
-    } catch { }
+    } catch (e) {
+      setError(e as Error)
+      return
+    }
 
     const handlePlay = () => setIsPlaying(true)
     const handlePause = () => setIsPlaying(false)
@@ -94,7 +112,6 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
     nextAudio.addEventListener('error', handleError)
 
     audio.current = nextAudio
-
     cleanUp.current = () => {
       audio?.current?.removeEventListener('play', handlePlay)
       audio?.current?.removeEventListener('pause', handlePause)
@@ -106,10 +123,10 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
   })
 
   useEffect(() => {
-    if (loadAudioConfig) {
-      load(loadAudioConfig)
+    if (loadAudioConfigMemo?.src) {
+      load(loadAudioConfigMemo)
     }
-  }, [load, loadAudioConfig])
+  }, [load, loadAudioConfigMemo])
 
   const play = useEvent(async () => {
     try {

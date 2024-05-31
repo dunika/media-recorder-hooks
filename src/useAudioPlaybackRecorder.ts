@@ -6,8 +6,7 @@ import type {
   RecordingState,
 } from './types.ts'
 import useAudioRecorder from './useAudioRecorder.ts'
-import useAudioPlayback from './useAudioPlayback.js'
-
+import useAudioPlayback from './useAudioPlayback.ts'
 
 export type UseAudioPlaybackRecorder = {
   controls: MediaControls
@@ -18,7 +17,8 @@ export type UseAudioPlaybackRecorder = {
 
 export type UseAudioPlaybackRecorderProps = {
   playbackSrc: string | null
-  audioDeviceId?: string
+  inputDeviceId?: string
+  outputDeviceId?: string
   recordingFormat?: AudioMediaFormat
   recordingTimeSlice?: number
   onFinished?: (_blob: Blob) => void
@@ -26,7 +26,8 @@ export type UseAudioPlaybackRecorderProps = {
 
 const useAudioPlaybackRecorder = ({
   playbackSrc,
-  audioDeviceId,
+  inputDeviceId,
+  outputDeviceId,
   recordingFormat,
   recordingTimeSlice,
   onFinished,
@@ -37,25 +38,28 @@ const useAudioPlaybackRecorder = ({
     blob: recordingBlob,
     error: recordingError,
   } = useAudioRecorder({
-    audioDeviceId,
+    deviceId: inputDeviceId,
     format: recordingFormat,
     timeSlice: recordingTimeSlice,
     onFinished,
   })
-  
+
   const {
     controls: audioControls,
     error: audioError,
   } = useAudioPlayback({
     src: playbackSrc,
+    deviceId: outputDeviceId,
     onFinished: () => {
       recorderControls.stop()
     },
   })
 
-  const start = useEvent(() => {
-    audioControls.play()
-    recorderControls.start()
+  const start = useEvent(async () => {
+    await Promise.all([
+      audioControls.play(),
+      recorderControls.start(),
+    ])
   })
 
   const stop = useEvent(() => {
@@ -86,7 +90,7 @@ const useAudioPlaybackRecorder = ({
     controls: controls.current,
     blob: recordingBlob,
     state: recordingState,
-    error: null,
+    error,
   }
 }
 

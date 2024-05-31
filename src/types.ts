@@ -1,5 +1,3 @@
-import { Video } from '../../../../types/index.d'
-
 export type RecordingState = 'inactive' | 'paused' | 'recording' | 'error' | 'stopped'
 
 export type MediaControls = {

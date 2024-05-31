@@ -13,9 +13,12 @@ export const fetchMediaDevices = async (): Promise<Record<MediaDeviceKind, Media
   devices.forEach((device) => {
     deviceMap[device.kind as MediaDeviceKind].push(device)
   })
+  return deviceMap
 }
 
-export const fetchDefaultMediaDevices = async (): Promise<Record<MediaDeviceKind, MediaDeviceInfo | null>> => {
+type DefaultMediaDeviceMap = Record<MediaDeviceKind, MediaDeviceInfo | null>
+
+export const fetchDefaultMediaDevices = async (): Promise<DefaultMediaDeviceMap> => {
   const devices = await navigator.mediaDevices.enumerateDevices()
   const defaultDevices: Record<MediaDeviceKind, MediaDeviceInfo | null> = {
     audioinput: null,

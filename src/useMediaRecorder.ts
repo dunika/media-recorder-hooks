@@ -91,15 +91,8 @@ const useMediaRecorder = ({
 
     reset()
 
-    shouldCallOnFinished.current = false
-
     try {
       const nextStream = await navigator.mediaDevices.getUserMedia(constraints)
-
-      // const audioContext = new AudioContext()
-      // const source = audioContext.createMediaStreamSource(nextStream)
-      // const destination = audioContext.createMediaStreamDestination()
-      // source.connect(destination)
 
       const nextMediaRecorder = new MediaRecorder(
         nextStream,

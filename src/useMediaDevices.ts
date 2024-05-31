@@ -4,12 +4,12 @@ import {
 } from 'react'
 import { fetchMediaDevices } from './mediaUtils.ts'
 
-export type UseAvailableMediaDevices = {
+export type UseMediaDevices = {
   devices: Record<MediaDeviceKind, MediaDeviceInfo[]>,
   error: Error | null
 }
 
-const useAvailableMediaDevices = (): UseAvailableMediaDevices => {
+const useMediaDevices = (): UseMediaDevices => {
   const [devices, setDevices] = useState<Record<MediaDeviceKind, MediaDeviceInfo[]>>({
     audioinput: [],
     audiooutput: [],
@@ -45,4 +45,4 @@ const useAvailableMediaDevices = (): UseAvailableMediaDevices => {
   }
 }
 
-export default useAvailableMediaDevices
+export default useMediaDevices
