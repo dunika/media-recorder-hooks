@@ -1,6 +1,5 @@
 export { default as useAudioPlaybackRecorder } from './useAudioPlaybackRecorder.ts'
 export { default as useAudioRecorder } from './useAudioRecorder.ts'
-export { default as useAvailableAudioDevices } from './useAvailableAudioDevices.ts'
+export { default as useAvailableMediaDevices } from './useAvailableMediaDevices.ts'
 export { default as useDecibelMonitor } from './useDecibelMonitor.ts'
-export { default as useMediaStream } from './useMediaStream.ts'
 export { default as useMediaRecorder } from './useMediaRecorder.ts'

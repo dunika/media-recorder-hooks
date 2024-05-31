@@ -1,40 +1,39 @@
-import useMediaStream from './useMediaStream.ts'
-import useMediaRecorder from './useMediaRecorder.ts'
-import {
-  MediaControls,
-  RecordingState,
-  FetchStatus,
-} from './types.ts'
+import { useMemo } from 'react'
+import useMediaRecorder from './useMediaRecorder'
+import { AudioMediaFormat } from './types'
 
-export type UseAudioRecorder = {
-  controls: MediaControls
-  blob: Blob[]
-  error: Error | null
-  state: RecordingState
+type UseAudioRecorderProps = {
+  audioDeviceId?: string
+  format?: AudioMediaFormat
+  timeSlice?: number
+  onFinished?: (_blob: Blob) => void
 }
 
-const useAudioRecorder = (deviceId?: string): UseAudioRecorder => {
-  const {
-    stream,
-    fetchStatus: streamFetchStatus,
-    error: streamError,
-  } = useMediaStream(deviceId)
+const useAudioRecorder = ({
+  audioDeviceId,
+  format,
+  timeSlice,
+  onFinished,
+}: UseAudioRecorderProps = {}): ReturnType<typeof useMediaRecorder> => {
+  const constraints = useMemo(() => {
+    if (!audioDeviceId) {
+      return {
+        audio: true,
+      }
+    }
+    return {
+      audio: {
+        deviceId: audioDeviceId,
+      },
+    }
+  }, [audioDeviceId])
 
-  const {
-    controls,
-    blob,
-    error: recorderError,
-    state,
-  } = useMediaRecorder(stream)
-
-  const error = streamError || recorderError
-
-  return {
-    controls,
-    state,
-    blob,
-    error: streamFetchStatus === FetchStatus.Pending ? null : error,
-  }
+  return useMediaRecorder({
+    constraints,
+    format,
+    timeSlice,
+    onFinished,
+  })
 }
 
 export default useAudioRecorder

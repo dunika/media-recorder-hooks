@@ -2,15 +2,20 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { fetchAvailableAudioDevices } from './mediaUtils.ts'
+import { fetchMediaDevices } from './mediaUtils.ts'
 
-export type UseAvailableAudioDevices = {
-  devices: MediaDeviceInfo[],
+export type UseAvailableMediaDevices = {
+  devices: Record<MediaDeviceKind, MediaDeviceInfo[]>,
   error: Error | null
 }
 
-const useAvailableAudioDevices = (): UseAvailableAudioDevices => {
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+const useAvailableMediaDevices = (): UseAvailableMediaDevices => {
+  const [devices, setDevices] = useState<Record<MediaDeviceKind, MediaDeviceInfo[]>>({
+    audioinput: [],
+    audiooutput: [],
+    videoinput: [],
+  })
+
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
@@ -18,7 +23,7 @@ const useAvailableAudioDevices = (): UseAvailableAudioDevices => {
       setError(null)
 
       try {
-        const nextDevices = await fetchAvailableAudioDevices()
+        const nextDevices = await fetchMediaDevices()
         setDevices(nextDevices)
       } catch (nextError) {
         setError(nextError as Error)
@@ -40,4 +45,4 @@ const useAvailableAudioDevices = (): UseAvailableAudioDevices => {
   }
 }
 
-export default useAvailableAudioDevices
+export default useAvailableMediaDevices

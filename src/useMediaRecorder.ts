@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -6,40 +7,28 @@ import {
 import useEvent from './useEvent.ts'
 import type {
   MediaControls,
+  MediaFormat,
   RecordingState,
 } from './types.ts'
+import { stopMediaStream } from './mediaUtils.ts'
 
-type GetMediaRecorderProps = {
-  stream: MediaStream
-  onStateChange: (_state: RecordingState) => void
-  onError: (_error: Error) => void
-  onDataAvailable: (_blob: Blob) => void
-  mimeType?: string
+type TimeStamps = {
+  start: Date | null,
+  end: Date | null,
 }
 
-const getMediaRecorder = ({
-  stream,
-  onStateChange,
-  onError,
-  onDataAvailable,
-  mimeType = 'audio/webm;codecs=opus', // TODO: make this configurable
-}: GetMediaRecorderProps): MediaRecorder => {
-  const mediaRecorder = new MediaRecorder(stream, { mimeType })
-
-  mediaRecorder.onstart = () => onStateChange('recording')
-  mediaRecorder.onstop = () => onStateChange('stopped')
-  mediaRecorder.onpause = () => onStateChange('paused')
-  mediaRecorder.onresume = () => onStateChange('recording')
-  mediaRecorder.onerror = (event) => {
-    const errorEvent = event as ErrorEvent;
-    onStateChange('error')
-    onError(errorEvent.error)
+const getDuration = (timeStamps: TimeStamps): number => {
+  if (!timeStamps.start || !timeStamps.end) {
+    return 0
   }
-  mediaRecorder.ondataavailable = (event) => {
-    onDataAvailable(event.data)
-  }
+  return timeStamps.end.getTime() - timeStamps.start.getTime()
+}
 
-  return mediaRecorder
+type UseMediaStreamRecorderProps = {
+  constraints: MediaStreamConstraints,
+  format?: MediaFormat
+  timeSlice?: number
+  onFinished?: (_blob: Blob) => void
 }
 
 type UseMediaStreamRecorder = {
@@ -47,46 +36,120 @@ type UseMediaStreamRecorder = {
   blob: Blob[]
   error: Error | null
   state: RecordingState
+  timeStamps: TimeStamps
+  duration: number
 }
 
-const useMediaRecorder = (
-  stream?: MediaStream | null,
-): UseMediaStreamRecorder => {
+const useMediaRecorder = ({
+  constraints,
+  format,
+  timeSlice,
+  onFinished,
+}: UseMediaStreamRecorderProps): UseMediaStreamRecorder => {
+  const stream = useRef<MediaStream | null>(null)
   const mediaRecorder = useRef<MediaRecorder | null>(null)
+
   const [recordingBlob, setRecordingBlob] = useState<Blob[]>([])
   const [recordingState, setRecordingState] = useState<RecordingState>('inactive')
+  const shouldCallOnFinished = useRef(false)
+
+  const [timeStamps, setTimeStamps] = useState<TimeStamps>({
+    start: null,
+    end: null,
+  })
+
   const [error, setError] = useState<Error | null>(null)
 
-  useEffect(() => {
-    return () => {
-      mediaRecorder.current?.stop()
-    }
-  }, [stream])
+  const reset = useCallback(() => {
+    mediaRecorder.current?.stop()
+    stopMediaStream(stream.current)
+    setRecordingBlob([])
+    setRecordingState('inactive')
+    setTimeStamps({
+      start: null,
+      end: null,
+    })
+    setError(null)
+    shouldCallOnFinished.current = false
+  }, [mediaRecorder, stream])
 
-  const start = useEvent(() => {
+  useEffect(() => {
+    return reset
+  }, [])
+
+  useEffect(() => {
+    if (shouldCallOnFinished.current) {
+      onFinished?.(new Blob(recordingBlob, format ? { type: format } : undefined))
+      shouldCallOnFinished.current = false
+    }
+  }, [recordingBlob, recordingState, onFinished, format])
+
+  const start = useCallback(async () => {
     if (['recording', 'paused'].includes(recordingState)) {
       return
     }
 
-    if (!stream) {
-      setError(new Error('No media stream provided'))
-      return
+    reset()
+
+    shouldCallOnFinished.current = false
+
+    try {
+      const nextStream = await navigator.mediaDevices.getUserMedia(constraints)
+
+      // const audioContext = new AudioContext()
+      // const source = audioContext.createMediaStreamSource(nextStream)
+      // const destination = audioContext.createMediaStreamDestination()
+      // source.connect(destination)
+
+      const nextMediaRecorder = new MediaRecorder(
+        nextStream,
+        format ? { mimeType: format } : undefined,
+      )
+      nextMediaRecorder.onstart = () => {
+        setTimeStamps({
+          start: new Date(),
+          end: null,
+        })
+        return setRecordingState('recording')
+      }
+      nextMediaRecorder.onpause = () => setRecordingState('paused')
+      nextMediaRecorder.onresume = () => setRecordingState('recording')
+      nextMediaRecorder.onstop = () => {
+        shouldCallOnFinished.current = true
+        setTimeStamps(({ start: startTime }) => ({
+          start: startTime,
+          end: new Date(),
+        }))
+        return setRecordingState('stopped')
+      }
+      nextMediaRecorder.onerror = (event) => {
+        const errorEvent = event as ErrorEvent
+        setRecordingState('error')
+        setError(errorEvent.error)
+      }
+      nextMediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setRecordingBlob((blob: Blob[]) => [...blob, event.data])
+        }
+        if (nextMediaRecorder.state === 'inactive') {
+          shouldCallOnFinished.current = true
+        }
+      }
+      nextMediaRecorder.start(timeSlice)
+
+      stream.current = nextStream
+      mediaRecorder.current = nextMediaRecorder
+    } catch (err) {
+      setError(err as Error)
+      setRecordingState('error')
     }
-
-    setError(null)
-    setRecordingBlob([])
-
-    mediaRecorder.current = getMediaRecorder({
-      stream,
-      onStateChange: setRecordingState,
-      onError: setError,
-      onDataAvailable: (blob) => {
-        setRecordingBlob((blobs: Blob[]) => [...blobs, blob]);
-      },
-    })
-
-    mediaRecorder.current.start(1000)
-  })
+  }, [
+    constraints,
+    format,
+    timeSlice,
+    recordingState,
+    reset,
+  ])
 
   const stop = useEvent(() => {
     if (['error', 'inactive', 'stopped'].includes(recordingState)) {
@@ -121,6 +184,8 @@ const useMediaRecorder = (
     blob: recordingBlob,
     state: recordingState,
     error,
+    timeStamps,
+    duration: getDuration(timeStamps),
   }
 }
 

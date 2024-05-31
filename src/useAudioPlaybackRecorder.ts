@@ -1,23 +1,13 @@
-import {
-  useEffect,
-  useRef,
-} from 'react'
-import { useAudioPlayer } from 'react-use-audio-player'
+import { useRef } from 'react'
 import useEvent from './useEvent.ts'
 import type {
+  AudioMediaFormat,
   MediaControls,
   RecordingState,
 } from './types.ts'
 import useAudioRecorder from './useAudioRecorder.ts'
-type StartCallback = () => void;
+import useAudioPlayback from './useAudioPlayback.js'
 
-const getError = (audioError: string | null, recordingError: Error | null): Error | null => {
-  if (audioError) {
-    return new Error(audioError)
-  }
-
-  return recordingError
-}
 
 export type UseAudioPlaybackRecorder = {
   controls: MediaControls
@@ -27,69 +17,59 @@ export type UseAudioPlaybackRecorder = {
 }
 
 export type UseAudioPlaybackRecorderProps = {
-  audioSrc: string | null
-  audioSrcFormat: string | null
+  playbackSrc: string | null
+  audioDeviceId?: string
+  recordingFormat?: AudioMediaFormat
+  recordingTimeSlice?: number
+  onFinished?: (_blob: Blob) => void
 }
 
 const useAudioPlaybackRecorder = ({
-  audioSrc,
-  audioSrcFormat,
+  playbackSrc,
+  audioDeviceId,
+  recordingFormat,
+  recordingTimeSlice,
+  onFinished,
 }: UseAudioPlaybackRecorderProps): UseAudioPlaybackRecorder => {
-  const {
-    load: loadAudio,
-    play: playAudio,
-    stop: stopAudio,
-    pause: pauseAudio,
-    cleanup: cleanupAudio,
-    error: audioError,
-  } = useAudioPlayer()
-
   const {
     controls: recorderControls,
     state: recordingState,
     blob: recordingBlob,
     error: recordingError,
-  } = useAudioRecorder()
-
-  useEffect(() => {
-    if (audioSrc) {
-      loadAudio(audioSrc, {
-        format: audioSrcFormat ?? undefined,
-        autoplay: false,
-        onend: () => {
-          recorderControls.stop()
-        },
-      })
-    }
-    return () => {
-      cleanupAudio()
+  } = useAudioRecorder({
+    audioDeviceId,
+    format: recordingFormat,
+    timeSlice: recordingTimeSlice,
+    onFinished,
+  })
+  
+  const {
+    controls: audioControls,
+    error: audioError,
+  } = useAudioPlayback({
+    src: playbackSrc,
+    onFinished: () => {
       recorderControls.stop()
-    }
-  }, [
-    audioSrc,
-    audioSrcFormat,
-    loadAudio,
-    cleanupAudio,
-    recorderControls,
-  ])
+    },
+  })
 
   const start = useEvent(() => {
-    playAudio()
+    audioControls.play()
     recorderControls.start()
   })
 
   const stop = useEvent(() => {
-    stopAudio()
+    audioControls.stop()
     recorderControls.stop()
   })
 
   const pause = useEvent(() => {
-    pauseAudio()
+    audioControls.pause()
     recorderControls.pause()
   })
 
   const resume = useEvent(() => {
-    playAudio()
+    audioControls.play()
     recorderControls.resume()
   })
 
@@ -100,13 +80,13 @@ const useAudioPlaybackRecorder = ({
     resume,
   })
 
-  const error = getError(audioError, recordingError)
+  const error = audioError || recordingError
 
   return {
     controls: controls.current,
     blob: recordingBlob,
     state: recordingState,
-    error,
+    error: null,
   }
 }
 

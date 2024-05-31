@@ -1,25 +1,52 @@
-export const fetchDefaultMediaStream = (constraints: MediaStreamConstraints = { audio: true }): Promise<MediaStream> => {
-  return navigator.mediaDevices.getUserMedia(constraints)
-}
-
-export const fetchMediaStream = (deviceId?: string, constraints?: MediaStreamConstraints): Promise<MediaStream> => {
-  if (!deviceId) {
-    return fetchDefaultMediaStream(constraints)
-  }
-  return navigator.mediaDevices.getUserMedia({ audio: { deviceId } })
-}
-
 export const fetchAvailableAudioDevices = async (): Promise<MediaDeviceInfo[]> => {
   const devices = await navigator.mediaDevices.enumerateDevices()
-  return devices.filter((device) => device.kind === 'audioinput')
+  return devices.filter((device) => device.kind === 'audiooutput')
 }
 
-export const getMediaStreamDeviceId = (stream: MediaStream): string | null => {
+export const fetchMediaDevices = async (): Promise<Record<MediaDeviceKind, MediaDeviceInfo[]>> => {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  const deviceMap: Record<MediaDeviceKind, MediaDeviceInfo[]> = {
+    audioinput: [],
+    audiooutput: [],
+    videoinput: [],
+  }
+  devices.forEach((device) => {
+    deviceMap[device.kind as MediaDeviceKind].push(device)
+  })
+}
+
+export const fetchDefaultMediaDevices = async (): Promise<Record<MediaDeviceKind, MediaDeviceInfo | null>> => {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  const defaultDevices: Record<MediaDeviceKind, MediaDeviceInfo | null> = {
+    audioinput: null,
+    audiooutput: null,
+    videoinput: null,
+  }
+  devices.forEach((device) => {
+    if (device.deviceId === 'default') {
+      defaultDevices[device.kind as MediaDeviceKind] = device
+    }
+  })
+  return defaultDevices
+}
+
+export const fetchAvailableVideoDevices = async (): Promise<MediaDeviceInfo[]> => {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  return devices.filter((device) => device.kind === 'videoinput')
+}
+
+export const getAudioStreamDeviceId = (stream: MediaStream): string | null => {
   const [track] = stream.getAudioTracks()
   const { deviceId } = track.getSettings()
   return deviceId ?? null
 }
 
-export const stopMediaStream = (stream: MediaStream) : void => {
-  stream.getTracks().forEach((track) => track.stop())
+export const getVideoStreamDeviceId = (stream: MediaStream): string | null => {
+  const [track] = stream.getVideoTracks()
+  const { deviceId } = track.getSettings()
+  return deviceId ?? null
+}
+
+export const stopMediaStream = (stream: MediaStream | null) : void => {
+  stream?.getTracks().forEach((track) => track.stop())
 }
