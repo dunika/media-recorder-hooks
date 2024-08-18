@@ -17,7 +17,7 @@ class DecibelMonitor {
 
   constructor(
     stream: MediaStream,
-    decibelUpdateInterval: number,
+    decibelUpdateInterval: number = 100,
   ) {
     this.audioContext = new AudioContext()
     this.source = this.audioContext.createMediaStreamSource(stream)
@@ -75,8 +75,10 @@ class DecibelMonitor {
     const rms = Math.sqrt(sum / this.dataArray.length)
     const decibels = 20 * Math.log10(rms)
 
+    const roundedDecibels = Math.round(decibels * 10) / 10
+
     this.subscribers.forEach((subscriber) => {
-      subscriber(decibels)
+      subscriber(roundedDecibels)
     })
   }
 

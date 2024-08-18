@@ -38,6 +38,7 @@ type UseMediaStreamRecorder = {
   state: RecordingState
   timeStamps: TimeStamps
   duration: number
+  stream: MediaStream | null
 }
 
 const useMediaRecorder = ({
@@ -179,6 +180,7 @@ const useMediaRecorder = ({
     error,
     timeStamps,
     duration: getDuration(timeStamps),
+    stream: stream.current,
   }
 }
 

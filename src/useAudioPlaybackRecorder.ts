@@ -13,6 +13,7 @@ export type UseAudioPlaybackRecorder = {
   blob: Blob[]
   error: Error | null
   state: RecordingState
+  stream: MediaStream | null
 }
 
 export type UseAudioPlaybackRecorderProps = {
@@ -37,6 +38,7 @@ const useAudioPlaybackRecorder = ({
     state: recordingState,
     blob: recordingBlob,
     error: recordingError,
+    stream,
   } = useAudioRecorder({
     deviceId: inputDeviceId,
     format: recordingFormat,
@@ -87,6 +89,7 @@ const useAudioPlaybackRecorder = ({
   const error = audioError || recordingError
 
   return {
+    stream,
     controls: controls.current,
     blob: recordingBlob,
     state: recordingState,

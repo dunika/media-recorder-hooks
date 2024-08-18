@@ -5,8 +5,8 @@ import {
 import DecibelMonitor from './DecibelMonitor.ts'
 
 export type UseDecibelMonitorProps = {
-  stream?: MediaStream;
-  decibelUpdateInterval: number;
+  stream: MediaStream | null;
+  decibelUpdateInterval?: number;
 };
 
 const useDecibelMonitor = ({
