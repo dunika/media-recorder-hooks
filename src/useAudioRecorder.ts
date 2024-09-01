@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
-import useMediaRecorder from './useMediaRecorder'
-import { AudioMediaFormat } from './types'
+import useMediaRecorder from './useMediaRecorder.ts'
+import { AudioMediaFormat } from './types.ts'
 
 type UseAudioRecorderProps = {
   deviceId?: string
   format?: AudioMediaFormat
   timeSlice?: number
-  onFinished?: (_blob: Blob) => void
+  onFinished?: (_blob: Blob | null) => void
 }
 
 const useAudioRecorder = ({

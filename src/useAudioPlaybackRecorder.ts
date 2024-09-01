@@ -10,7 +10,7 @@ import useAudioPlayback from './useAudioPlayback.ts'
 
 export type UseAudioPlaybackRecorder = {
   controls: MediaControls
-  blob: Blob[]
+  getBlob: () => Promise<Blob | null>
   error: Error | null
   state: RecordingState
   stream: MediaStream | null
@@ -22,7 +22,7 @@ export type UseAudioPlaybackRecorderProps = {
   outputDeviceId?: string
   recordingFormat?: AudioMediaFormat
   recordingTimeSlice?: number
-  onFinished?: (_blob: Blob) => void
+  onFinished?: (_blob: Blob | null) => void
 }
 
 const useAudioPlaybackRecorder = ({
@@ -36,7 +36,7 @@ const useAudioPlaybackRecorder = ({
   const {
     controls: recorderControls,
     state: recordingState,
-    blob: recordingBlob,
+    getBlob: getRecordingBlob,
     error: recordingError,
     stream,
   } = useAudioRecorder({
@@ -91,7 +91,7 @@ const useAudioPlaybackRecorder = ({
   return {
     stream,
     controls: controls.current,
-    blob: recordingBlob,
+    getBlob: getRecordingBlob,
     state: recordingState,
     error,
   }

@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "exports": "./src/index.ts",
   "compilerOptions": {
-    "target": "esnext",
     "lib": [
       "dom",
       "dom.iterable",
@@ -12,6 +11,10 @@
     ]
   },
   "imports": {
-    "react": "npm:react@^18.3.1"
+    "react": "npm:react@^18.3.1",
+    "recordrtc": "npm:recordrtc@^5.6.2",
+    "@ffmpeg/ffmpeg": "npm:@ffmpeg/ffmpeg@^0.12.10",
+    "@ffmpeg/util": "npm:^0.12.1@ffmpeg/util",
+    "lodash": "https://deno.land/x/lodash@4.17.19"
   }
 }

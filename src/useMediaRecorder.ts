@@ -1,14 +1,17 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
+import { RecordRTCPromisesHandler } from 'recordrtc'
 import useEvent from './useEvent.ts'
-import type {
-  MediaControls,
-  MediaFormat,
-  RecordingState,
+import {
+  AudioMediaFormat,
+  type MediaControls,
+  type MediaFormat,
+  type RecordingState,
 } from './types.ts'
 import { stopMediaStream } from './mediaUtils.ts'
 
@@ -17,23 +20,17 @@ type TimeStamps = {
   end: Date | null,
 }
 
-const getDuration = (timeStamps: TimeStamps): number => {
-  if (!timeStamps.start || !timeStamps.end) {
-    return 0
-  }
-  return timeStamps.end.getTime() - timeStamps.start.getTime()
-}
 
 type UseMediaStreamRecorderProps = {
   constraints: MediaStreamConstraints,
   format?: MediaFormat
   timeSlice?: number
-  onFinished?: (_blob: Blob) => void
+  onFinished?: (_blob: Blob | null) => void
 }
 
 type UseMediaStreamRecorder = {
   controls: MediaControls
-  blob: Blob[]
+  getBlob: () => Promise<Blob | null>
   error: Error | null
   state: RecordingState
   timeStamps: TimeStamps
@@ -41,98 +38,72 @@ type UseMediaStreamRecorder = {
   stream: MediaStream | null
 }
 
-const useMediaRecorder = ({
-  constraints,
-  format,
-  timeSlice,
-  onFinished,
-}: UseMediaStreamRecorderProps): UseMediaStreamRecorder => {
-  const stream = useRef<MediaStream | null>(null)
-  const mediaRecorder = useRef<MediaRecorder | null>(null)
+type MediaRecorderState = {
+  stream: MediaStream | null
+  recorder: RecordRTCPromisesHandler | null,
+}
 
-  const [recordingBlob, setRecordingBlob] = useState<Blob[]>([])
+const initialMediaRecorderState = {
+  stream: null,
+  recorder: null,
+}
+
+const defaultGetBlob = async () => null
+
+function useMediaRecorder({
+  constraints,
+  format = AudioMediaFormat.Webm,
+  onFinished,
+}: UseMediaStreamRecorderProps): UseMediaStreamRecorder {
+
+
+  const [media, setMedia] = useState<MediaRecorderState>(initialMediaRecorderState)
+  const getBlob = media?.recorder?.getBlob ?? defaultGetBlob
+
+  const isMounted = useRef(false)
+
+  const [shouldCallOnFinished, setShouldCallOnFinished] = useState(false)
   const [recordingState, setRecordingState] = useState<RecordingState>('inactive')
-  const shouldCallOnFinished = useRef(false)
 
   const [timeStamps, setTimeStamps] = useState<TimeStamps>({
     start: null,
     end: null,
   })
 
+  useEffect(() => {
+    console.log('media.recorder?.getState()')
+    const interval = setInterval(() => {
+      console.log(media.recorder?.getState())
+    }
+    , 1000)
+    return () => clearInterval(interval)
+  }, [media])
+
   const [error, setError] = useState<Error | null>(null)
 
-  const reset = useCallback(() => {
-    mediaRecorder.current?.stop()
-    stopMediaStream(stream.current)
-    setRecordingBlob([])
-    setRecordingState('inactive')
-    setTimeStamps({
-      start: null,
-      end: null,
-    })
-    setError(null)
-    shouldCallOnFinished.current = false
-  }, [mediaRecorder, stream])
-
-  useEffect(() => {
-    return reset
-  }, [])
-
-  useEffect(() => {
-    if (shouldCallOnFinished.current) {
-      onFinished?.(new Blob(recordingBlob, format ? { type: format } : undefined))
-      shouldCallOnFinished.current = false
+  const initializeAudioRecorder = useCallback(async () => {
+    if (media.recorder) {
+      return 
     }
-  }, [recordingBlob, recordingState, onFinished, format])
-
-  const start = useCallback(async () => {
-    if (['recording', 'paused'].includes(recordingState)) {
-      return
-    }
-
-    reset()
-
+  
     try {
-      const nextStream = await navigator.mediaDevices.getUserMedia(constraints)
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
 
-      const nextMediaRecorder = new MediaRecorder(
-        nextStream,
-        format ? { mimeType: format } : undefined,
+      const recorder = new RecordRTCPromisesHandler(
+        stream,
+        {
+          type: 'audio',
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        }
       )
-      nextMediaRecorder.onstart = () => {
-        setTimeStamps({
-          start: new Date(),
-          end: null,
-        })
-        return setRecordingState('recording')
-      }
-      nextMediaRecorder.onpause = () => setRecordingState('paused')
-      nextMediaRecorder.onresume = () => setRecordingState('recording')
-      nextMediaRecorder.onstop = () => {
-        shouldCallOnFinished.current = true
-        setTimeStamps(({ start: startTime }) => ({
-          start: startTime,
-          end: new Date(),
-        }))
-        return setRecordingState('stopped')
-      }
-      nextMediaRecorder.onerror = (event) => {
-        const errorEvent = event as ErrorEvent
-        setRecordingState('error')
-        setError(errorEvent.error)
-      }
-      nextMediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setRecordingBlob((blob: Blob[]) => [...blob, event.data])
-        }
-        if (nextMediaRecorder.state === 'inactive') {
-          shouldCallOnFinished.current = true
-        }
-      }
-      nextMediaRecorder.start(timeSlice)
 
-      stream.current = nextStream
-      mediaRecorder.current = nextMediaRecorder
+      setMedia({
+        stream: stream,
+        recorder: recorder
+      })
+
+
     } catch (err) {
       setError(err as Error)
       setRecordingState('error')
@@ -140,48 +111,123 @@ const useMediaRecorder = ({
   }, [
     constraints,
     format,
-    timeSlice,
-    recordingState,
-    reset,
   ])
 
-  const stop = useEvent(() => {
+  const cleanup = useCallback(() => {
+    media.recorder?.destroy()
+    stopMediaStream(media.stream);
+    setMedia(initialMediaRecorderState)
+  }, [media]);
+
+  const reset = useCallback(() => {
+    setShouldCallOnFinished(false)
+    setRecordingState('inactive')
+    setTimeStamps({
+      start: null,
+      end: null,
+    })
+    setError(null)
+  }, [])
+  
+
+  useEffect(() => {
+    if (isMounted.current) {
+      return
+    }
+    isMounted.current = true
+    initializeAudioRecorder()
+    return cleanup
+  }, [initializeAudioRecorder, cleanup])
+
+  useEffect(() => {
+    if (shouldCallOnFinished) {
+      getBlob().then(onFinished)
+      setShouldCallOnFinished(false)
+    }
+  }, [media, recordingState, onFinished, shouldCallOnFinished, getBlob])
+
+  const start = useCallback(async () => {
+    if (['recording', 'paused'].includes(recordingState)) {
+      return
+    }
+
+    if (recordingState === 'stopped') {
+      cleanup()
+      reset()
+      await initializeAudioRecorder()
+    }
+
+    setTimeStamps({
+      start: new Date(),
+      end: null,
+    })
+
+    await media.recorder?.startRecording()
+    setRecordingState('recording')
+  }, [
+    recordingState,
+    initializeAudioRecorder,
+    cleanup,
+    reset,
+    media,
+  ])
+
+  const stop = useEvent(async () => {
     if (['error', 'inactive', 'stopped'].includes(recordingState)) {
       return
     }
-    mediaRecorder.current?.stop()
+    
+    await media.recorder?.stopRecording()
+
+    setRecordingState('stopped')
+    setTimeStamps(({ start: startTime }:TimeStamps) => ({
+      start: startTime,
+      end: new Date(),
+    }))
+
+    setShouldCallOnFinished(true)
   })
 
   const pause = useEvent(() => {
     if (recordingState !== 'recording') {
       return
     }
-    mediaRecorder.current?.pause()
+    media.recorder?.pauseRecording()
+    setRecordingState('paused')
   })
 
   const resume = useEvent(() => {
     if (recordingState !== 'paused') {
       return
     }
-    mediaRecorder.current?.resume()
+    media.recorder?.resumeRecording()
+    setRecordingState('recording')
   })
 
-  const controls = useRef<MediaControls>({
+  const controls = useMemo(() => ({
     start,
     stop,
     pause,
     resume,
-  })
+  }), [start, stop, pause, resume]);
 
   return {
-    controls: controls.current,
-    blob: recordingBlob,
+    controls: controls,
+    getBlob: getBlob,
     state: recordingState,
     error,
     timeStamps,
     duration: getDuration(timeStamps),
-    stream: stream.current,
+    stream: media?.stream,
   }
 }
+
+function getDuration(timeStamps: TimeStamps): number {
+  if (!timeStamps.start || !timeStamps.end) {
+    return 0
+  }
+  return timeStamps.end.getTime() - timeStamps.start.getTime()
+}
+
 
 export default useMediaRecorder

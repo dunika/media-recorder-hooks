@@ -1,11 +1,10 @@
 import {
   useState,
   useEffect,
-  useRef,
   useCallback,
   useMemo,
 } from 'react';
-import useEvent from './useEvent';
+import useEvent from './useEvent.ts';
 
 type LoadAudioConfig = {
   src: string | null;
@@ -25,7 +24,6 @@ type UseAudioPlayback = {
   duration: number;
   error: Error | null;
   controls: AudioPlaybackControls;
-  load: (_props: LoadAudioConfig) => void;
 };
 
 const useMemoLoadAudioConfig = (
@@ -49,10 +47,9 @@ const useMemoLoadAudioConfig = (
 };
 
 const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback => {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const cleanUp = useRef(() => {});
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -60,124 +57,137 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
 
   const loadAudioConfigMemo = useMemoLoadAudioConfig(loadAudioConfig);
 
-  const reset = useCallback(() => {
+  const cleanUp = useCallback(async () => {
+    await audioContext?.close();
+    audioElement?.remove();
+    audioSource?.disconnect();
+  }, [audioContext, audioElement, audioSource]);
+
+
+  const reset = useCallback(async () => {
+    await cleanUp()
+
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setError(null);
-
-    cleanUp.current();
-    audioElementRef.current = null;
-    audioSourceRef.current = null;
-  }, []);
+    setAudioElement(null);
+    setAudioSource(null);
+  }, [cleanUp]);
 
   useEffect(() => {
-    return reset;
-  }, [reset]);
+    return () => {
+      cleanUp();
+    }
+  }, [cleanUp]);
 
-  const load = useEvent(async ({
-    deviceId,
-    onFinished,
-    src,
-  }: LoadAudioConfig) => {
-    reset();
+  useEffect(() => {
+    const eventListeners: { element: EventTarget, event: string, handler: EventListenerOrEventListenerObject }[] = [];
 
-    if (src === null) {
-      setError(new Error('No source provided'));
-      return;
+    const addEventListener = (element: EventTarget, event: string, handler: EventListenerOrEventListenerObject) => {
+      element.addEventListener(event, handler);
+      eventListeners.push({ element, event, handler });
     }
 
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
+    const load = async () => {
+      reset();
 
-    const nextAudioElement = new Audio(src);
+      const { src, onFinished, deviceId } = loadAudioConfigMemo || {};
 
-    try {
-      if (deviceId) {
-        await nextAudioElement.setSinkId(deviceId);
+      if (src === null) {
+        setError(new Error('No source provided'));
+        return;
       }
-    } catch (e) {
-      setError(e as Error);
-      return;
+
+
+      const audioContext = new AudioContext();
+
+      const audioElement = new Audio(src);
+
+      try {
+        if (deviceId) {
+          await audioElement.setSinkId(deviceId);
+        }
+      } catch (e) {
+        setError(e as Error);
+        return;
+      }
+
+      const audioSource = audioContext.createMediaElementSource(audioElement);
+
+      const handlePlay = () => setIsPlaying(true);
+      const handlePause = () => setIsPlaying(false);
+      const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        onFinished?.();
+      };
+      const handleTimeUpdate = () => setCurrentTime(audioElement.currentTime);
+      const handleLoadedMetadata = () => setDuration(audioElement.duration);
+      const handleError = (event: Event) => setError((event as ErrorEvent).error);
+
+      addEventListener(audioElement, 'play', handlePlay);
+      addEventListener(audioElement, 'pause', handlePause);
+      addEventListener(audioElement, 'ended', handleEnded);
+      addEventListener(audioElement, 'timeupdate', handleTimeUpdate);
+      addEventListener(audioElement, 'loadedmetadata', handleLoadedMetadata);
+      addEventListener(audioElement, 'error', handleError);
+
+      audioSource.connect(audioContext.destination);
+
+      setAudioContext(audioContext);
+      setAudioElement(audioElement);
+      setAudioSource(audioSource);
     }
 
-    const nextAudioSource = audioContextRef.current.createMediaElementSource(nextAudioElement);
+    load();
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      onFinished?.();
+    return () => {
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
     };
-    const handleTimeUpdate = () => setCurrentTime(nextAudioElement.currentTime);
-    const handleLoadedMetadata = () => setDuration(nextAudioElement.duration);
-    const handleError = (event: ErrorEvent) => setError(event.error);
+  }, [loadAudioConfigMemo]);
 
-    nextAudioElement.addEventListener('play', handlePlay);
-    nextAudioElement.addEventListener('pause', handlePause);
-    nextAudioElement.addEventListener('ended', handleEnded);
-    nextAudioElement.addEventListener('timeupdate', handleTimeUpdate);
-    nextAudioElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-    nextAudioElement.addEventListener('error', handleError);
-
-    audioElementRef.current = nextAudioElement;
-    audioSourceRef.current = nextAudioSource;
-
-    nextAudioSource.connect(audioContextRef.current.destination);
-
-    cleanUp.current = () => {
-      audioElementRef.current?.removeEventListener('play', handlePlay);
-      audioElementRef.current?.removeEventListener('pause', handlePause);
-      audioElementRef.current?.removeEventListener('ended', handleEnded);
-      audioElementRef.current?.removeEventListener('timeupdate', handleTimeUpdate);
-      audioElementRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audioElementRef.current?.removeEventListener('error', handleError);
-      audioSourceRef.current?.disconnect();
-    };
-  });
-
-  useEffect(() => {
-    if (loadAudioConfigMemo?.src) {
-      load(loadAudioConfigMemo);
-    }
-  }, [load, loadAudioConfigMemo]);
 
   const play = useEvent(async () => {
+    if (audioContext?.state === "suspended") {
+      audioContext.resume();
+    }
+
     try {
-      await audioElementRef.current?.play();
+      await audioElement?.play();
     } catch (e) {
       setError(e as Error);
     }
   });
 
   const pause = () => {
-    audioElementRef.current?.pause();
+    audioElement?.pause();
   };
 
   const stop = () => {
-    audioElementRef.current?.pause();
-    if (audioElementRef.current) {
-      audioElementRef.current.currentTime = 0;
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsPlaying(false);
     }
-    setIsPlaying(false);
   };
 
-  const controls = useRef({
+  const controls = {
     play,
     pause,
     stop,
-  });
+  };
 
   return {
     isPlaying,
     currentTime,
     duration,
     error,
-    controls: controls.current,
-    load,
+    controls,
   };
 };
+
 
 export default useAudioPlayback;

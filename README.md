@@ -21,9 +21,10 @@ bunx jsr add @dunika/media-recorder-hooks
 deno add @dunika/media-recorder-hooks
 ```
 
+## Chrome Troubleshooting
+Disable these flags in Chrome these settings in Chrome by going to `chrome://flags`:
+- Allow WebRTC to adjust the input volume.
+- Chrome-wide echo cancellation
+
 ## Usage
-
 TODO
-
-
-
