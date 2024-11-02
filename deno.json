@@ -2,6 +2,7 @@
   "name": "@dunika/media-recorder-hooks",
   "version": "0.2.0",
   "exports": "./src/index.ts",
+  "license": "MIT",
   "compilerOptions": {
     "lib": [
       "dom",
