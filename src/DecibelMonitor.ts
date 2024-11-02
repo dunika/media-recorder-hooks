@@ -1,6 +1,6 @@
 type UnsubscribeCallback = () => void
 
-class DecibelMonitor {
+export class DecibelMonitor {
   private audioContext: AudioContext
 
   private source: MediaStreamAudioSourceNode
@@ -90,4 +90,3 @@ class DecibelMonitor {
   }
 }
 
-export default DecibelMonitor

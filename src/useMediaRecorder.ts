@@ -50,13 +50,11 @@ const initialMediaRecorderState = {
 
 const defaultGetBlob = async () => null
 
-function useMediaRecorder({
+export const useMediaRecorder = ({
   constraints,
   format = AudioMediaFormat.Webm,
   onFinished,
-}: UseMediaStreamRecorderProps): UseMediaStreamRecorder {
-
-
+}: UseMediaStreamRecorderProps): UseMediaStreamRecorder => {
   const [media, setMedia] = useState<MediaRecorderState>(initialMediaRecorderState)
   const getBlob = media?.recorder?.getBlob ?? defaultGetBlob
 
@@ -230,4 +228,3 @@ function getDuration(timeStamps: TimeStamps): number {
 }
 
 
-export default useMediaRecorder

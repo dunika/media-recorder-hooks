@@ -9,7 +9,7 @@ export type UseMediaDevices = {
   error: Error | null
 }
 
-const useMediaDevices = (): UseMediaDevices => {
+export const useMediaDevices = (): UseMediaDevices => {
   const [devices, setDevices] = useState<Record<MediaDeviceKind, MediaDeviceInfo[]>>({
     audioinput: [],
     audiooutput: [],
@@ -45,4 +45,3 @@ const useMediaDevices = (): UseMediaDevices => {
   }
 }
 
-export default useMediaDevices

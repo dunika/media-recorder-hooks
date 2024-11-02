@@ -5,8 +5,8 @@ import type {
   MediaControls,
   RecordingState,
 } from './types.ts'
-import useAudioRecorder from './useAudioRecorder.ts'
-import useAudioPlayback from './useAudioPlayback.ts'
+import {useAudioRecorder} from './useAudioRecorder.ts'
+import {useAudioPlayback} from './useAudioPlayback.ts'
 
 export type UseAudioPlaybackRecorder = {
   controls: MediaControls
@@ -25,7 +25,7 @@ export type UseAudioPlaybackRecorderProps = {
   onFinished?: (_blob: Blob | null) => void
 }
 
-const useAudioPlaybackRecorder = ({
+export const useAudioPlaybackRecorder = ({
   playbackSrc,
   inputDeviceId,
   outputDeviceId,

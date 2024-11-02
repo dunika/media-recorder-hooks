@@ -46,7 +46,7 @@ const useMemoLoadAudioConfig = (
   }, [src, wrappedOnFinished, deviceId]);
 };
 
-const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback => {
+export const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [audioSource, setAudioSource] = useState<MediaElementAudioSourceNode | null>(null);
@@ -190,4 +190,3 @@ const useAudioPlayback = (loadAudioConfig?: LoadAudioConfig): UseAudioPlayback =
 };
 
 
-export default useAudioPlayback;

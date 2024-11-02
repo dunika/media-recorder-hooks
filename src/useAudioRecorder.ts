@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import useMediaRecorder from './useMediaRecorder.ts'
+import {useMediaRecorder} from './useMediaRecorder.ts'
 import { AudioMediaFormat } from './types.ts'
 
 type UseAudioRecorderProps = {
@@ -9,7 +9,7 @@ type UseAudioRecorderProps = {
   onFinished?: (_blob: Blob | null) => void
 }
 
-const useAudioRecorder = ({
+export const useAudioRecorder = ({
   deviceId,
   format,
   timeSlice,

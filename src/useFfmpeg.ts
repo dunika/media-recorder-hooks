@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { toBlobURL } from '@ffmpeg/util';
 
-const useFFmpeg = () => {
+export const useFFmpeg = () => {
   const [loaded, setLoaded] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
 
@@ -51,4 +51,3 @@ const useFFmpeg = () => {
   };
 };
 
-export default useFFmpeg;

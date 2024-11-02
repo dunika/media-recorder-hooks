@@ -2,14 +2,14 @@ import {
   useEffect,
   useState,
 } from 'react'
-import DecibelMonitor from './DecibelMonitor.ts'
+import { DecibelMonitor } from './DecibelMonitor.ts'
 
 export type UseDecibelMonitorProps = {
   stream: MediaStream | null;
   decibelUpdateInterval?: number;
 };
 
-const useDecibelMonitor = ({
+export const useDecibelMonitor = ({
   stream,
   decibelUpdateInterval,
 }: UseDecibelMonitorProps): number | null => {
